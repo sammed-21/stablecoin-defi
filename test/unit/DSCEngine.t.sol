@@ -8,19 +8,29 @@ import {DeployDSC} from "../../script/DeployDSC.s.sol";
 import {HelperConfig} from "../../script/HelperConfig.s.sol";
 import {DecentralizedStableCoin} from "../../src/DecentralizedStableCoin.sol";
 import {DSCEngine} from "../../src/DSCEngin.sol";
+import {ERC20Mock} from "@openzeppelin/contracts/mocks/ERC20Mock.sol";
 
 contract DSCEngineTest is Test {
     DeployDSC deployer;
     DecentralizedStableCoin dsc;
-    DSCEngine dsc;
+    DSCEngine dsce;
     HelperConfig config;
     address ethUsdPriceFeed;
     address weth;
 
+    address public USER = makeAddr("user");
+    uint256 constant AMOUNT_COLLATERAL = 10e18;
+    uint256 constant STARTING_ERC20_BALANCE = 10e18;
+
     function setUp() public {
-        deployer = new DeployeDSC();
+        deployer = new DeployDSC();
         (dsc, dsce, config) = deployer.run();
-        (ethUsdPriceFeed, , weth, , ) = config.activeNetworkConfig();
+        HelperConfig.NetworkConfig memory networkConfig = config
+            .activeNetworkConfig();
+        ethUsdPriceFeed = networkConfig.wethUsdPriceFeed;
+        weth = networkConfig.weth;
+
+        ERC20Mock(weth).mint(address(USER), STARTING_ERC20_BALANCE);
     }
 
     /////////////////
@@ -28,6 +38,22 @@ contract DSCEngineTest is Test {
     /////////////////
 
     function testGetUsdValue() public {
-        console.log(ethUsdPriceFeed, weth);
+        uint256 wethPrice = 1e18;
+        uint256 expectedEthUsd = 2000e18;
+        uint256 actualUsd = dsce.getUsdValue(weth, wethPrice);
+        console.log("actualUsd", actualUsd);
+        console.log("expectedEthUsd", expectedEthUsd);
+        assertEq(actualUsd, expectedEthUsd);
+    }
+
+    //////////////////////////////
+    // Deposit Colleteral Tests //
+    //////////////////////////////
+    function testDepositCollateralRevertsIfAmountIsZero() public {
+        vm.prank(USER);
+        ERC20Mock(weth).approve(address(dsce), 10e18);
+        vm.expectRevert(DSCEngine.DSCEngine__NeedsMoreThanZero.selector);
+        dsce.depositeCollateral(weth, 0);
+        vm.stopPrank();
     }
 }

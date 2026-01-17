@@ -26,9 +26,13 @@
 pragma solidity ^0.8.18;
 
 import {DecentralizedStableCoin} from "./DecentralizedStableCoin.sol";
-import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import {
+    ReentrancyGuard
+} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
+import {
+    AggregatorV3Interface
+} from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 
 /**
  * @title DSCEngine
@@ -114,21 +118,34 @@ contract DSCEngine is ReentrancyGuard {
         //USD Price Feeeds
         if (tokenAddresses.length != priceFeedAddress.length) {
             revert DSCEngine_TokenAddressesAndPriceFeedAddressesMustBeSameLength();
-            // for example ETH/USD, BTC/USD, MKR/USD etc
-
-            for (uint256 i = 0; i < tokenAddresses.length; i++) {
-                s_priceFeeds[tokenAddresses[i] = priceFeedAddress[i]];
-                s_collaterTokens.push(tokenAddresses[i]);
-            }
-            i_dsc = DecentralizedStableCoin(dscAddress);
         }
+        // for example ETH/USD, BTC/USD, MKR/USD etc
+
+        for (uint256 i = 0; i < tokenAddresses.length; i++) {
+            s_priceFeeds[tokenAddresses[i]] = priceFeedAddress[i];
+            s_collaterTokens.push(tokenAddresses[i]);
+        }
+        i_dsc = DecentralizedStableCoin(dscAddress);
     }
 
     ///////////////////////////
     // External Functions    //
     //////////////////////////
 
-    function depositeCollateralAndMintDsc() external {}
+    /**
+     * @notice Follows CEI pattern
+     * @param tokenCollateralAddress the address of token to deposit as collateral
+     * @param amountCollateral the amount of collateral to deposite
+     * @param amountDscToMint the amount of decentralized stablecoin to mint
+     */
+    function depositeCollateralAndMintDsc(
+        address tokenCollateralAddress,
+        uint256 amountCollateral,
+        uint256 amountDscToMint
+    ) external {
+        depositeCollateral((tokenCollateralAddress), amountCollateral);
+        mintDsc(amountDscToMint);
+    }
 
     /**
      *@notice follows Check Effect Interaction (CEI)
@@ -139,7 +156,7 @@ contract DSCEngine is ReentrancyGuard {
         address tokenCollateralAddress,
         uint256 amountCollateral
     )
-        external
+        public
         moreThanZero(amountCollateral)
         isAllowedToken(tokenCollateralAddress)
         nonReentrant
@@ -162,9 +179,37 @@ contract DSCEngine is ReentrancyGuard {
         }
     }
 
-    function redeemCollateralForDsc() external {}
+    function redeemCollateralForDsc(
+        address tokenCollateralAddress,
+        uint256 amountCollateral,
+        uint256 amountDscToBurn
+    ) external {
+        burnDsc(amountDscToBurn);
+        redeemCollateral(tokenCollateralAddress, amountCollateral);
+    }
 
-    function redeemCollateral() external {}
+    function redeemCollateral(
+        address tokenCollateralAddress,
+        uint256 amountCollateral
+    ) public moreThanZero(amountCollateral) nonReentrant {
+        s_collateralDeposited[msg.sender][
+            tokenCollateralAddress
+        ] -= amountCollateral;
+        emit CollateralRedeemed(
+            msg.sender,
+            tokenCollateralAddress,
+            amountCollateral
+        );
+
+        bool success = IERC20(tokenCollateralAddress).transfer(
+            msg.sender,
+            amountCollateral
+        );
+        if (!success) {
+            revert DSCEngine__TransferFailed();
+        }
+        _revertIfHealthFactorIsBroken(msg.sender);
+    }
 
     /*
      * @notice fellows CEI
@@ -174,7 +219,7 @@ contract DSCEngine is ReentrancyGuard {
 
     function mintDsc(
         uint256 amountDscToMint
-    ) external moreThanZero(amountDscToMint) nonReentrant {
+    ) public moreThanZero(amountDscToMint) nonReentrant {
         s_DSCMinted[msg.sender] += amountDscToMint;
         // if they mined too much ($150 DSC, $100ETH)
 
@@ -185,7 +230,24 @@ contract DSCEngine is ReentrancyGuard {
         }
     }
 
-    function burnDsc() external {}
+    function burnDsc(
+        uint256 amountDscToBurn
+    ) public moreThanZero(amountDscToBurn) {
+        s_DSCMinted[msg.sender] -= amountDscToBurn;
+        bool success = i_dsc.transferFrom(
+            msg.sender,
+            address(this),
+            amountDscToBurn
+        );
+        if (!success) {
+            revert DSCEngine__TransferFailed();
+        }
+        bool burned = i_dsc.burn(amountDscToBurn);
+        if (!burned) {
+            revert DSCEngine_MintFailed();
+        }
+        _revertIfHealthFactorIsBroken(msg.sender);
+    }
 
     function liquidate() external {}
 
