@@ -26,13 +26,9 @@
 pragma solidity ^0.8.18;
 
 import {DecentralizedStableCoin} from "./DecentralizedStableCoin.sol";
-import {
-    ReentrancyGuard
-} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {
-    AggregatorV3Interface
-} from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
+import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 
 /**
  * @title DSCEngine
@@ -241,6 +237,7 @@ contract DSCEngine is ReentrancyGuard {
         _burnDsc(amountDscToBurn, msg.sender, msg.sender);
         _revertIfHealthFactorIsBroken(msg.sender);
     }
+
     // if someone is alsmost undercollateralized, we weill pay yoto liquidate them
     /**
      * @notice Follows CEI pattern
@@ -250,9 +247,9 @@ contract DSCEngine is ReentrancyGuard {
      * @notice you can partially liquidate a user
      * @notice You will get a liquidation bonus for taking the users funds
      * @notice this function working assumes the protocol will be roughly 200% overcollateralized in order for this to work.
-     * @notice 
+     * @notice
 
-     * Follows CEI: CHECK , EFFECT, INTERACTION 
+     * Follows CEI: CHECK , EFFECT, INTERACTION
      */
     function liquidate(
         address collateral,
@@ -334,6 +331,7 @@ contract DSCEngine is ReentrancyGuard {
             revert DSCEngine__TransferFailed();
         }
     }
+
     function _getAccountInformation(
         address user
     )

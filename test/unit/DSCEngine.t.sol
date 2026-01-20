@@ -41,7 +41,7 @@ contract DSCEngineTest is Test {
     address[] public tokenAddress;
     address[] public priceFeedAddress;
 
-    function testConstructor() public {
+    function testRevertIfTokenLengthDoesntMatch() public {
         tokenAddress.push(weth);
         priceFeedAddress.push(ethUsdPriceFeed);
         priceFeedAddress.push(btcUsdPriceFeed);
