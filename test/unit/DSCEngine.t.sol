@@ -57,6 +57,16 @@ contract DSCEngineTest is Test {
     // Price Tests //
     /////////////////
 
+    function testGetTokenAmountFromUsd() public {
+        uint256 usdAmount = 100 ether;
+        // $2000  / ETH, $100
+        uint256 expectedWeth = 0.05 ether;
+
+        uint256 amountInUsd = dsce.getTokenAmountFromUsd(weth, usdAmount);
+        console.log(amountInUsd);
+        assertEq((expectedWeth), amountInUsd);
+    }
+
     function testGetUsdValue() public {
         uint256 wethPrice = 1e18;
         uint256 expectedEthUsd = 2000e18;

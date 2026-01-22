@@ -366,7 +366,10 @@ contract DSCEngine is ReentrancyGuard {
         }
     }
 
-    function getHealthFactor() external view {}
+    function getHealthFactor(address user) external view returns (uint256) {
+        uint256 healthFactor = _healthFactor(user);
+        return healthFactor;
+    }
 
     ////////////////////////////////////////
     // Public  and External  Functions    //
