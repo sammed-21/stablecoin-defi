@@ -17,6 +17,9 @@ contract DSCEngineTest is Test {
     HelperConfig config;
     address ethUsdPriceFeed;
     address btcUsdPriceFeed;
+
+    uint256 amountCollateral = 10 ether;
+    uint256 amountToMint = 100 ether;
     address weth;
 
     address public USER = makeAddr("user");
@@ -140,5 +143,21 @@ contract DSCEngineTest is Test {
     {
         uint256 userBalance = dsc.balanceOf(USER);
         assertEq(userBalance, AMOUNT_COLLATERAL);
+    }
+
+    modifier depositedCollateralAndMintedDsc() {
+        vm.startPrank(user);
+        ERC20Mock(weth).approve(address(dsce), amountCollateral);
+        dsce.depositCollateralAndMintDsc(weth, amountCollateral, amountToMint);
+        vm.stopPrank();
+        _;
+    }
+
+    function testCanMintWithDepositedCollateral()
+        public
+        depositedCollateralAndMintedDsc
+    {
+        uint256 userBalance = dsc.balanceOf(user);
+        assertEq(userBalance, amountToMint);
     }
 }
